@@ -10,31 +10,33 @@ import (
 
 var startCmd = &cli.Command{
 	Name:  "daemon",
-	Usage: "Start a filedag storage process",
+	Usage: "Start a file dag storage process",
 	Flags: []cli.Flag{
 		&cli.StringFlag{
 			Name:  "listen",
 			Usage: "set server listen",
-			Value: ":9985",
+			Value: ":9000",
 		},
 		&cli.StringFlag{
-			Name:  "datadir",
-			Usage: "directory to store data in",
-			Value: "./store-data",
+			Name:    "data-dir",
+			Aliases: []string{"data"},
+			Usage:   "directory to store data in",
+			Value:   "./store-data",
 		},
 		&cli.StringFlag{
-			Name:  "pool-addr",
-			Usage: "set the pool rpc address you want connect",
+			Name:        "pool-addr",
+			DefaultText: "localhost:5001",
+			Usage:       "set the ipfs http address you want connect",
 		},
 		&cli.StringFlag{
 			Name:    "root-user",
-			Usage:   "set root filedag root user",
+			Usage:   "set root file dag root user",
 			EnvVars: []string{EnvRootUser},
 			Value:   auth.DefaultAccessKey,
 		},
 		&cli.StringFlag{
 			Name:    "root-password",
-			Usage:   "set root filedag root password",
+			Usage:   "set root file dag root password",
 			EnvVars: []string{EnvRootPassword},
 			Value:   auth.DefaultSecretKey,
 		},
@@ -51,9 +53,9 @@ func main() {
 		startCmd,
 	}
 	app := &cli.App{
-		Name:                 "filedag-storage",
-		Usage:                "filedag-storage",
-		Version:              "0.0.11",
+		Name:                 "fds",
+		Usage:                "fds",
+		Version:              "1.0.1",
 		EnableBashCompletion: true,
 		Commands:             local,
 	}
