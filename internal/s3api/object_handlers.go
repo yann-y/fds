@@ -209,7 +209,7 @@ func (s3a *s3ApiServer) GetObjectHandler(w http.ResponseWriter, r *http.Request)
 		response.WriteErrorResponse(w, r, apierrors.ToApiError(ctx, err))
 		return
 	}
-	log.Infof("GetObjectHandler %s %s", bucket, object)
+	log.Infof("GetObjectHandler %s %s,url: %s", bucket, object, r.URL.String())
 	if err = s3utils.CheckGetObjArgs(ctx, bucket, object); err != nil {
 		response.WriteErrorResponse(w, r, apierrors.ToApiError(ctx, err))
 		return
