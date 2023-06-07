@@ -40,7 +40,7 @@ func missingCredentialError(user, pwd string) error {
 // startServer Start a IamServer
 func startServer(cctx *cli.Context) {
 	listen := cctx.String("listen")
-	datadir := cctx.String("datadir")
+	datadir := cctx.String("data-dir")
 	poolAddr := cctx.String("pool-addr")
 
 	user := cctx.String("root-user")
