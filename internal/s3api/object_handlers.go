@@ -47,9 +47,10 @@ func (s3a *s3ApiServer) PutObjectACLHandler(w http.ResponseWriter, r *http.Reque
 func (s3a *s3ApiServer) GetObjectACLHandler(w http.ResponseWriter, r *http.Request) {
 	// collect parameters
 	bucket, object, _ := getBucketAndObject(r)
-	log.Infof("GetObjectACLHandler %s %s", bucket, object)
+	log.Infof("GetObjectACLHandler %s %s,url:%s", bucket, object, r.URL.String())
 	cred, _, s3err := s3a.authSys.CheckRequestAuthTypeCredential(r.Context(), r, s3action.GetBucketPolicyAction, bucket, "")
 	if s3err != apierrors.ErrNone {
+		log.Errorf("GetObjectACLHandler %v", s3err)
 		response.WriteErrorResponse(w, r, s3err)
 		return
 	}
@@ -68,6 +69,7 @@ func (s3a *s3ApiServer) GetObjectACLHandler(w http.ResponseWriter, r *http.Reque
 			XMLNS:       "http://www.w3.org/2001/XMLSchema-instance"},
 		Permission: "FULL_CONTROL", //todo change
 	})
+	response.WriteSuccessResponseXML(w, r, resp)
 }
 
 // PutObjectHandler Put ObjectHandler
@@ -233,7 +235,7 @@ func (s3a *s3ApiServer) GetObjectHandler(w http.ResponseWriter, r *http.Request)
 		response.WriteErrorResponse(w, r, apierrors.ToApiError(ctx, err))
 		return
 	}
-	w.Header().Set(consts.AmzServerSideEncryption, consts.AmzEncryptionAES)
+	//w.Header().Set(consts.AmzServerSideEncryption, consts.AmzEncryptionAES)
 
 	response.SetObjectHeaders(w, r, objInfo)
 	w.Header().Set(consts.ContentLength, strconv.FormatInt(objInfo.Size, 10))
@@ -278,7 +280,7 @@ func (s3a *s3ApiServer) HeadObjectHandler(w http.ResponseWriter, r *http.Request
 		response.WriteErrorResponseHeadersOnly(w, r, apierrors.ToApiError(ctx, err))
 		return
 	}
-	w.Header().Set(consts.AmzServerSideEncryption, consts.AmzEncryptionAES)
+	//w.Header().Set(consts.AmzServerSideEncryption, consts.AmzEncryptionAES)
 
 	// Set standard object headers.
 	response.SetObjectHeaders(w, r, objInfo)
