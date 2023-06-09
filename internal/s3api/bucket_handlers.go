@@ -102,8 +102,11 @@ func (s3a *s3ApiServer) PutBucketHandler(w http.ResponseWriter, r *http.Request)
 		response.WriteErrorResponse(w, r, apierrors.ErrInvalidBucketName)
 		return
 	}
-
-	err := s3a.bmSys.CreateBucket(ctx, bucket, region, cred.AccessKey)
+	aclHeader := r.Header.Get(consts.AmzACL)
+	if !checkPermissionType(aclHeader) {
+		aclHeader = Private
+	}
+	err := s3a.bmSys.CreateBucket(ctx, bucket, region, cred.AccessKey, aclHeader)
 	if err != nil {
 		log.Errorf("PutBucketHandler create bucket error:%v", s3err)
 		response.WriteErrorResponse(w, r, apierrors.ToApiError(ctx, err))
@@ -163,35 +166,6 @@ func (s3a *s3ApiServer) DeleteBucketHandler(w http.ResponseWriter, r *http.Reque
 	response.WriteSuccessNoContent(w)
 }
 
-// GetBucketAclHandler Get Bucket ACL
-// https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetBucketAcl.html
-func (s3a *s3ApiServer) GetBucketAclHandler(w http.ResponseWriter, r *http.Request) {
-	// collect parameters
-	bucket, _, _ := getBucketAndObject(r)
-	log.Infof("GetBucketAclHandler %s", bucket)
-	cred, _, s3err := s3a.authSys.CheckRequestAuthTypeCredential(r.Context(), r, s3action.GetBucketPolicyAction, bucket, "")
-	if s3err != apierrors.ErrNone {
-		response.WriteErrorResponse(w, r, s3err)
-		return
-	}
-	resp := response.AccessControlPolicy{}
-	id := cred.AccessKey
-	if resp.Owner.DisplayName == "" {
-		resp.Owner.DisplayName = cred.AccessKey
-		resp.Owner.ID = id
-	}
-	resp.AccessControlList.Grant = append(resp.AccessControlList.Grant, response.Grant{
-		Grantee: response.Grantee{
-			ID:          id,
-			DisplayName: cred.AccessKey,
-			Type:        "CanonicalUser",
-			XMLXSI:      "CanonicalUser",
-			XMLNS:       "http://www.w3.org/2001/XMLSchema-instance"},
-		Permission: "FULL_CONTROL", //todo change
-	})
-	response.WriteSuccessResponseXML(w, r, resp)
-}
-
 // GetBucketCorsHandler Get bucket CORS
 // https://docs.aws.amazon.com/AmazonS3/latest/API/API_GetBucketCors.html
 func (s3a *s3ApiServer) GetBucketCorsHandler(w http.ResponseWriter, r *http.Request) {
@@ -208,48 +182,6 @@ func (s3a *s3ApiServer) PutBucketCorsHandler(w http.ResponseWriter, r *http.Requ
 // https://docs.aws.amazon.com/AmazonS3/latest/API/API_DeleteBucketCors.html
 func (s3a *s3ApiServer) DeleteBucketCorsHandler(w http.ResponseWriter, r *http.Request) {
 	response.WriteErrorResponse(w, r, http.StatusNoContent)
-}
-
-// PutBucketAclHandler Put bucket ACL
-// https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutBucketAcl.html
-func (s3a *s3ApiServer) PutBucketAclHandler(w http.ResponseWriter, r *http.Request) {
-	bucket, _, _ := getBucketAndObject(r)
-
-	// Allow putBucketACL if policy action is set, since this is a dummy call
-	// we are simply re-purposing the bucketPolicyAction.
-	_, _, s3err := s3a.authSys.CheckRequestAuthTypeCredential(r.Context(), r, s3action.PutBucketPolicyAction, bucket, "")
-	if s3err != apierrors.ErrNone {
-		response.WriteErrorResponse(w, r, s3err)
-		return
-	}
-
-	aclHeader := r.Header.Get(consts.AmzACL)
-	if aclHeader == "" {
-		acl := &response.AccessControlPolicy{}
-		if errc := utils.XmlDecoder(r.Body, acl, r.ContentLength); errc != nil {
-			if errc == io.EOF {
-				response.WriteErrorResponse(w, r, apierrors.ErrMissingSecurityHeader)
-				return
-			}
-			response.WriteErrorResponse(w, r, apierrors.ErrInternalError)
-			return
-		}
-
-		if len(acl.AccessControlList.Grant) == 0 {
-			response.WriteErrorResponse(w, r, apierrors.ErrNotImplemented)
-			return
-		}
-
-		if acl.AccessControlList.Grant[0].Permission != "FULL_CONTROL" {
-			response.WriteErrorResponse(w, r, apierrors.ErrNotImplemented)
-			return
-		}
-	}
-
-	if aclHeader != "" && aclHeader != "private" {
-		response.WriteErrorResponse(w, r, apierrors.ErrNotImplemented)
-		return
-	}
 }
 
 // PutBucketTaggingHandler

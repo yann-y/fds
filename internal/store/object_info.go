@@ -46,6 +46,7 @@ type ObjectInfo struct {
 
 	// ipfs key
 	Cid string
+	Acl string
 	// Version ID of this object.
 	VersionID string
 

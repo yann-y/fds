@@ -77,6 +77,7 @@ type BucketMetadata struct {
 	Name    string
 	Region  string
 	Owner   string
+	Acl     string
 	Created time.Time
 
 	PolicyConfig  *policy.Policy
@@ -84,12 +85,13 @@ type BucketMetadata struct {
 }
 
 // NewBucketMetadata creates BucketMetadata with the supplied name and Created to Now.
-func NewBucketMetadata(name, region, accessKey string) *BucketMetadata {
+func NewBucketMetadata(name, region, accessKey, acl string) *BucketMetadata {
 	p := policy.CreateUserBucketPolicy(name, accessKey)
 	return &BucketMetadata{
 		Name:         name,
 		Region:       region,
 		Owner:        accessKey,
+		Acl:          acl,
 		Created:      time.Now().UTC(),
 		PolicyConfig: p,
 	}
@@ -110,7 +112,7 @@ func (sys *BucketMetadataSys) setBucketMeta(bucket string, meta *BucketMetadata)
 }
 
 // CreateBucket - create a new Bucket
-func (sys *BucketMetadataSys) CreateBucket(ctx context.Context, bucket, region, accessKey string) error {
+func (sys *BucketMetadataSys) CreateBucket(ctx context.Context, bucket, region, accessKey, acl string) error {
 	lk := sys.NewNSLock(bucket)
 	lkctx, err := lk.GetLock(ctx, globalOperationTimeout)
 	if err != nil {
@@ -119,7 +121,7 @@ func (sys *BucketMetadataSys) CreateBucket(ctx context.Context, bucket, region, 
 	ctx = lkctx.Context()
 	defer lk.Unlock(lkctx.Cancel)
 
-	return sys.setBucketMeta(bucket, NewBucketMetadata(bucket, region, accessKey))
+	return sys.setBucketMeta(bucket, NewBucketMetadata(bucket, region, accessKey, acl))
 }
 
 func (sys *BucketMetadataSys) getBucketMeta(bucket string) (meta BucketMetadata, err error) {

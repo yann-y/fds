@@ -24,54 +24,6 @@ import (
 	"strings"
 )
 
-// object ACL：包括private（私有）、public-read（公开读）、public-read-write（公开读写）、default（默认），
-// 支持创建（PUT）、更新（PUT）、查询（GET）、删除(DELETE)。
-// private（私有）:该ACL表明某个Object是私有资源，即只有该Object的Owner拥有该Object的读写权限，其他的用户没有权限操作该Object。
-// public-read（公开读）:	该ACL表明某个Object是公共读资源，即非Object Owner只有该Object的读权限，而Object Owner拥有该Object的读写权限。
-// public-read-write（公开读写）:该ACL表明某个Object是公共读写资源，即所有用户拥有对该Object的读写权限。
-// default（默认）:该ACL表明某个Object是遵循Bucket读写权限的资源，即Bucket是什么权限，Object就是什么权限。
-
-// PutObjectAclHandler - PUT Object ACL
-// -----------------
-// This operation uses the ACL subresource
-// to set ACL for a bucket, this is a dummy call
-// only responds success if the ACL is private.
-func (s3a *s3ApiServer) PutObjectACLHandler(w http.ResponseWriter, r *http.Request) {
-	response.WriteSuccessResponseHeadersOnly(w, r)
-}
-
-// GetObjectACLHandler - GET Object ACL
-// -----------------
-// This operation uses the ACL
-// subresource to return the ACL of a specified object.
-func (s3a *s3ApiServer) GetObjectACLHandler(w http.ResponseWriter, r *http.Request) {
-	// collect parameters
-	bucket, object, _ := getBucketAndObject(r)
-	log.Infof("GetObjectACLHandler %s %s,url:%s", bucket, object, r.URL.String())
-	cred, _, s3err := s3a.authSys.CheckRequestAuthTypeCredential(r.Context(), r, s3action.GetBucketPolicyAction, bucket, "")
-	if s3err != apierrors.ErrNone {
-		log.Errorf("GetObjectACLHandler %v", s3err)
-		response.WriteErrorResponse(w, r, s3err)
-		return
-	}
-	resp := response.AccessControlPolicy{}
-	id := cred.AccessKey
-	if resp.Owner.DisplayName == "" {
-		resp.Owner.DisplayName = cred.AccessKey
-		resp.Owner.ID = id
-	}
-	resp.AccessControlList.Grant = append(resp.AccessControlList.Grant, response.Grant{
-		Grantee: response.Grantee{
-			ID:          id,
-			DisplayName: cred.AccessKey,
-			Type:        "CanonicalUser",
-			XMLXSI:      "CanonicalUser",
-			XMLNS:       "http://www.w3.org/2001/XMLSchema-instance"},
-		Permission: "FULL_CONTROL", //todo change
-	})
-	response.WriteSuccessResponseXML(w, r, resp)
-}
-
 // PutObjectHandler Put ObjectHandler
 // https://docs.aws.amazon.com/AmazonS3/latest/API/API_PutObject.html
 func (s3a *s3ApiServer) PutObjectHandler(w http.ResponseWriter, r *http.Request) {
@@ -189,12 +141,18 @@ func (s3a *s3ApiServer) PutObjectHandler(w http.ResponseWriter, r *http.Request)
 		response.WriteErrorResponse(w, r, apierrors.ErrInvalidRequest)
 		return
 	}
+	aclHeader := r.Header.Get(consts.AmzACL)
+	if !checkPermissionType(aclHeader) {
+		aclHeader = Default
+	}
+	metadata[consts.AmzACL] = aclHeader
 	objInfo, err := s3a.store.StoreObject(ctx, bucket, object, hashReader, size, metadata)
 	if err != nil {
 		log.Errorf("PutObjectHandler StoreObject err:%v", err)
 		response.WriteErrorResponse(w, r, apierrors.ToApiError(ctx, err))
 		return
 	}
+
 	setPutObjHeaders(w, objInfo, false)
 	response.WriteSuccessResponseHeadersOnly(w, r)
 }
