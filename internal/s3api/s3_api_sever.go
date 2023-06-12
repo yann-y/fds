@@ -58,7 +58,7 @@ func (s3a *s3ApiServer) registerS3Router(router *mux.Router) {
 		// GetObject
 		bucket.Methods(http.MethodGet).Path("/{object:.+}").HandlerFunc(s3a.GetObjectHandler)
 		// PutObjectACL
-		bucket.Methods(http.MethodPut).Path("/{object:.+}").HandlerFunc(s3a.PutObjectACLHandler).Queries("acl", "")
+		bucket.Methods(http.MethodPut).Path("/{object:.+}").HandlerFunc(s3a.PutObjectAclHandler).Queries("acl", "")
 		// PutObject
 		bucket.Methods(http.MethodPut).Path("/{object:.+}").HandlerFunc(s3a.PutObjectHandler)
 		// DeleteObject

@@ -185,6 +185,56 @@ func (p *Policy) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+const (
+	// PublicReadWrite 公开读写，适用于桶ACL和对象ACL
+	PublicReadWrite = "public-read-write"
+	// PublicRead 公开读，适用于桶ACL和对象ACL
+	PublicRead = "public-read"
+	// Private 私有，适用于桶ACL和对象ACL
+	Private = "private"
+	// Default 默认，适用于对象ACL
+	Default = "default"
+)
+
+// 支持匿名公开读的action集合
+var rdActionSet = []s3action.Action{
+	s3action.GetObjectAction,
+	s3action.GetObjectRetentionAction,
+	s3action.GetObjectLegalHoldAction,
+	s3action.GetObjectTaggingAction,
+	s3action.GetObjectVersionAction,
+	s3action.GetObjectVersionTaggingAction,
+	s3action.GetObjectVersionForReplicationAction,
+}
+
+// 支持匿名公开读写的action集合
+var rwActionSet = []s3action.Action{
+	s3action.AbortMultipartUploadAction,
+	s3action.DeleteObjectAction,
+	s3action.GetObjectAction,
+	s3action.ListMultipartUploadPartsAction,
+	s3action.PutObjectAction,
+	s3action.BypassGovernanceRetentionAction,
+	s3action.PutObjectRetentionAction,
+	s3action.GetObjectRetentionAction,
+	s3action.PutObjectLegalHoldAction,
+	s3action.GetObjectLegalHoldAction,
+	s3action.GetObjectTaggingAction,
+	s3action.PutObjectTaggingAction,
+	s3action.DeleteObjectTaggingAction,
+	s3action.GetObjectVersionAction,
+	s3action.GetObjectVersionTaggingAction,
+	s3action.DeleteObjectVersionAction,
+	s3action.DeleteObjectVersionTaggingAction,
+	s3action.PutObjectVersionTaggingAction,
+	s3action.ReplicateObjectAction,
+	s3action.ReplicateDeleteAction,
+	s3action.ReplicateTagsAction,
+	s3action.GetObjectVersionForReplicationAction,
+	s3action.RestoreObjectAction,
+}
+
+// CreateAnonReadOnlyBucketPolicy // 支持匿名公开读的Policy权限
 func CreateAnonReadOnlyBucketPolicy(bucketName string) *Policy {
 	return &Policy{
 		Version: DefaultVersion,
@@ -193,15 +243,16 @@ func CreateAnonReadOnlyBucketPolicy(bucketName string) *Policy {
 				"",
 				Allow,
 				NewPrincipal("*"),
-				s3action.NewActionSet(s3action.GetBucketLocationAction, s3action.ListBucketAction),
-				NewResourceSet(NewResource(bucketName, "")),
+				s3action.NewActionSet(rdActionSet...),
+				NewResourceSet(NewResource(bucketName, "*")),
 				condition.NewConFunctions(),
 			),
 		},
 	}
 }
 
-func CreateAnonWriteOnlyBucketPolicy(bucketName string) *Policy {
+// CreateAnonReadAndWriteOnlyBucketPolicy 支持匿名公开读写的Policy权限
+func CreateAnonReadAndWriteOnlyBucketPolicy(bucketName string) *Policy {
 	return &Policy{
 		Version: DefaultVersion,
 		Statements: []Statement{
@@ -210,10 +261,9 @@ func CreateAnonWriteOnlyBucketPolicy(bucketName string) *Policy {
 				Allow,
 				NewPrincipal("*"),
 				s3action.NewActionSet(
-					s3action.GetBucketLocationAction,
-					s3action.ListBucketMultipartUploadsAction,
+					rwActionSet...,
 				),
-				NewResourceSet(NewResource(bucketName, "")),
+				NewResourceSet(NewResource(bucketName, "*")),
 				condition.NewConFunctions(),
 			),
 		},
@@ -228,7 +278,7 @@ func CreateAnonReadOnlyObjectPolicy(bucketName, prefix string) *Policy {
 				"",
 				Allow,
 				NewPrincipal("*"),
-				s3action.NewActionSet(s3action.GetObjectAction),
+				s3action.NewActionSet(rdActionSet...),
 				NewResourceSet(NewResource(bucketName, prefix)),
 				condition.NewConFunctions(),
 			),
@@ -236,7 +286,7 @@ func CreateAnonReadOnlyObjectPolicy(bucketName, prefix string) *Policy {
 	}
 }
 
-func CreateAnonWriteOnlyObjectPolicy(bucketName, prefix string) *Policy {
+func CreateAnonReadAndWriteOnlyObjectPolicy(bucketName, prefix string) *Policy {
 	return &Policy{
 		Version: DefaultVersion,
 		Statements: []Statement{
@@ -244,12 +294,7 @@ func CreateAnonWriteOnlyObjectPolicy(bucketName, prefix string) *Policy {
 				"",
 				Allow,
 				NewPrincipal("*"),
-				s3action.NewActionSet(
-					s3action.AbortMultipartUploadAction,
-					s3action.DeleteObjectAction,
-					s3action.ListMultipartUploadPartsAction,
-					s3action.PutObjectAction,
-				),
+				s3action.NewActionSet(rwActionSet...),
 				NewResourceSet(NewResource(bucketName, prefix)),
 				condition.NewConFunctions(),
 			),
@@ -292,4 +337,17 @@ func CreateUserBucketPolicy(bucketName, accessKey string) *Policy {
 			),
 		},
 	}
+}
+func CreateBucketPolicy(bucketName, accessKey, acl string) *Policy {
+	defaultPolicy := CreateUserBucketPolicy(bucketName, accessKey)
+	switch acl {
+	case PublicRead:
+		newPolicy := CreateAnonReadOnlyBucketPolicy(bucketName)
+		defaultPolicy.Statements = append(newPolicy.Statements, defaultPolicy.Statements...)
+	case PublicReadWrite:
+		newPolicy := CreateAnonReadAndWriteOnlyBucketPolicy(bucketName)
+		defaultPolicy.Statements = append(newPolicy.Statements, defaultPolicy.Statements...)
+	default:
+	}
+	return defaultPolicy
 }

@@ -243,6 +243,7 @@ func (s *StorageSys) StoreObject(ctx context.Context, bucket, object string, rea
 		VersionID:        "",
 		IsLatest:         true,
 		DeleteMarker:     false,
+		Acl:              meta[consts.AmzACL],
 		ContentType:      meta[strings.ToLower(consts.ContentType)],
 		ContentEncoding:  meta[strings.ToLower(consts.ContentEncoding)],
 		SuccessorModTime: time.Now().UTC(),
@@ -270,6 +271,19 @@ func (s *StorageSys) StoreObject(ctx context.Context, bucket, object string, rea
 		return ObjectInfo{}, err
 	}
 	return objInfo, nil
+}
+
+// PutObjectInfo put acl
+func (s *StorageSys) PutObjectInfo(ctx context.Context, objInfo ObjectInfo) error {
+	bucket, object := objInfo.Bucket, objInfo.Name
+	lk := s.NewNSLock(bucket, object)
+	lkctx, err := lk.GetRLock(ctx, globalOperationTimeout)
+	if err != nil {
+		return err
+	}
+	ctx = lkctx.Context()
+	defer lk.RUnlock(lkctx.Cancel)
+	return s.Db.Put(getObjectKey(bucket, object), objInfo)
 }
 
 // GetObject Get object
