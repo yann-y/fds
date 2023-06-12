@@ -8,6 +8,7 @@ import (
 	"github.com/yann-y/fds/internal/consts"
 	"github.com/yann-y/fds/internal/datatypes"
 	"github.com/yann-y/fds/internal/iam"
+	"github.com/yann-y/fds/internal/iam/policy"
 	"github.com/yann-y/fds/internal/iam/s3action"
 	"github.com/yann-y/fds/internal/response"
 	"github.com/yann-y/fds/internal/store"
@@ -143,7 +144,7 @@ func (s3a *s3ApiServer) PutObjectHandler(w http.ResponseWriter, r *http.Request)
 	}
 	aclHeader := r.Header.Get(consts.AmzACL)
 	if !checkPermissionType(aclHeader) {
-		aclHeader = Default
+		aclHeader = policy.Default
 	}
 	metadata[consts.AmzACL] = aclHeader
 	objInfo, err := s3a.store.StoreObject(ctx, bucket, object, hashReader, size, metadata)

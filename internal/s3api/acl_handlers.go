@@ -3,6 +3,7 @@ package s3api
 import (
 	"github.com/yann-y/fds/internal/apierrors"
 	"github.com/yann-y/fds/internal/consts"
+	"github.com/yann-y/fds/internal/iam/policy"
 	"github.com/yann-y/fds/internal/iam/s3action"
 	"github.com/yann-y/fds/internal/response"
 	"github.com/yann-y/fds/internal/utils"
@@ -11,26 +12,15 @@ import (
 	"net/http"
 )
 
-const (
-	// PublicReadWrite 公开读写，适用于桶ACL和对象ACL
-	PublicReadWrite = "public-read-write"
-	// PublicRead 公开读，适用于桶ACL和对象ACL
-	PublicRead = "public-read"
-	// Private 私有，适用于桶ACL和对象ACL
-	Private = "private"
-	// Default 默认，适用于对象ACL
-	Default = "default"
-)
-
 func checkPermissionType(s string) bool {
 	switch s {
-	case PublicRead:
+	case policy.PublicRead:
 		return true
-	case PublicReadWrite:
+	case policy.PublicReadWrite:
 		return true
-	case Private:
+	case policy.Private:
 		return true
-	case Default:
+	case policy.Default:
 		return true
 	}
 	return false
@@ -40,14 +30,14 @@ func checkPermissionType(s string) bool {
 // 如果传其他的，默认default
 func checkPutObjectACL(acl string) string {
 	switch acl {
-	case PublicRead:
+	case policy.PublicRead:
 		return acl
-	case PublicReadWrite:
+	case policy.PublicReadWrite:
 		return acl
-	case Private:
+	case policy.Private:
 		return acl
 	default:
-		return Default
+		return policy.Default
 	}
 }
 
@@ -101,7 +91,7 @@ func (s3a *s3ApiServer) PutBucketAclHandler(w http.ResponseWriter, r *http.Reque
 
 	// Allow putBucketACL if policy action is set, since this is a dummy call
 	// we are simply re-purposing the bucketPolicyAction.
-	_, _, s3err := s3a.authSys.CheckRequestAuthTypeCredential(r.Context(), r, s3action.PutBucketPolicyAction, bucket, "")
+	cred, _, s3err := s3a.authSys.CheckRequestAuthTypeCredential(r.Context(), r, s3action.PutBucketPolicyAction, bucket, "")
 	if s3err != apierrors.ErrNone {
 		response.WriteErrorResponse(w, r, s3err)
 		return
@@ -135,7 +125,7 @@ func (s3a *s3ApiServer) PutBucketAclHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	ctx := r.Context()
-	err := s3a.bmSys.UpdateBucketAcl(ctx, bucket, aclHeader)
+	err := s3a.bmSys.UpdateBucketAcl(ctx, bucket, aclHeader, cred.AccessKey)
 	if err != nil {
 		response.WriteErrorResponse(w, r, apierrors.ToApiError(ctx, err))
 		return

@@ -86,7 +86,7 @@ type BucketMetadata struct {
 
 // NewBucketMetadata creates BucketMetadata with the supplied name and Created to Now.
 func NewBucketMetadata(name, region, accessKey, acl string) *BucketMetadata {
-	p := policy.CreateUserBucketPolicy(name, accessKey)
+	p := policy.CreateBucketPolicy(name, accessKey, acl)
 	return &BucketMetadata{
 		Name:         name,
 		Region:       region,

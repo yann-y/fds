@@ -1,8 +1,11 @@
 package store
 
-import "context"
+import (
+	"context"
+	"github.com/yann-y/fds/internal/iam/policy"
+)
 
-func (sys *BucketMetadataSys) UpdateBucketAcl(ctx context.Context, bucket, acl string) error {
+func (sys *BucketMetadataSys) UpdateBucketAcl(ctx context.Context, bucket, acl, accessKey string) error {
 	lk := sys.NewNSLock(bucket)
 	lkctx, err := lk.GetLock(ctx, globalOperationTimeout)
 	if err != nil {
@@ -17,6 +20,8 @@ func (sys *BucketMetadataSys) UpdateBucketAcl(ctx context.Context, bucket, acl s
 	}
 
 	meta.Acl = acl
+	newPolicy := policy.CreateBucketPolicy(bucket, accessKey, acl)
+	meta.PolicyConfig = newPolicy
 	return sys.setBucketMeta(bucket, &meta)
 }
 func (sys *BucketMetadataSys) GetBucketAcl(ctx context.Context, bucket string) (string, error) {

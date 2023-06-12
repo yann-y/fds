@@ -7,6 +7,7 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/yann-y/fds/internal/apierrors"
 	"github.com/yann-y/fds/internal/consts"
+	"github.com/yann-y/fds/internal/iam/policy"
 	"github.com/yann-y/fds/internal/iam/s3action"
 	"github.com/yann-y/fds/internal/response"
 	"github.com/yann-y/fds/internal/store"
@@ -104,7 +105,7 @@ func (s3a *s3ApiServer) PutBucketHandler(w http.ResponseWriter, r *http.Request)
 	}
 	aclHeader := r.Header.Get(consts.AmzACL)
 	if !checkPermissionType(aclHeader) {
-		aclHeader = Private
+		aclHeader = policy.Private
 	}
 	err := s3a.bmSys.CreateBucket(ctx, bucket, region, cred.AccessKey, aclHeader)
 	if err != nil {
