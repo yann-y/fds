@@ -88,9 +88,9 @@ func NewStorageSys(ctx context.Context, dagService ipld.DAGService, db *uleveldb
 		gcPeriod:   15 * time.Minute,
 		gcTimeout:  30 * time.Minute,
 	}
-	go func() {
-		s.processObjectGC(ctx)
-	}()
+	//go func() {
+	//	s.processObjectGC(ctx)
+	//}()
 	return s
 }
 
