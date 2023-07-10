@@ -21,7 +21,7 @@ func TestStorageSys_Object(t *testing.T) {
 	dagServ := merkledag.NewDAGService(blockservice.New(poolCli, offline.Exchange(poolCli)))
 	s := NewStorageSys(context.TODO(), dagServ, db)
 	mbsys := NewBucketMetadataSys(db)
-	mbsys.CreateBucket(context.TODO(), "testbucket", "", "")
+	mbsys.CreateBucket(context.TODO(), "testbucket", "", "", "")
 	s.SetNewBucketNSLock(mbsys.NewNSLock)
 	s.SetHasBucket(mbsys.HasBucket)
 	r := ioutil.NopCloser(bytes.NewReader([]byte("123456")))
