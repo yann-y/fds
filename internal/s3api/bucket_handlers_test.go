@@ -4,11 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/filedag-project/filedag-storage/dag/pool/client"
 	"github.com/gorilla/mux"
-	"github.com/ipfs/go-blockservice"
-	offline "github.com/ipfs/go-ipfs-exchange-offline"
-	"github.com/ipfs/go-merkledag"
+	dagpool "github.com/yann-y/fds/dag/pool/ipfs"
 	"github.com/yann-y/fds/internal/iam"
 	"github.com/yann-y/fds/internal/iam/auth"
 	"github.com/yann-y/fds/internal/iam/policy"
@@ -40,10 +37,8 @@ func TestMain(m *testing.M) {
 		return
 	}
 	authSys := iam.NewAuthSys(db, cred)
-	poolCli, done := client.NewMockPoolClient(&testing.T{})
-	defer done()
-	dagServ := merkledag.NewDAGService(blockservice.New(poolCli, offline.Exchange(poolCli)))
-	storageSys := store.NewStorageSys(context.TODO(), dagServ, db)
+	poolClient, err := dagpool.NewPoolClient(nil, true)
+	storageSys := store.NewStorageSys(context.TODO(), poolClient, db)
 	bmSys := store.NewBucketMetadataSys(db)
 	storageSys.SetNewBucketNSLock(bmSys.NewNSLock)
 	storageSys.SetHasBucket(bmSys.HasBucket)
