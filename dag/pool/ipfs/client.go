@@ -1,29 +1,23 @@
 package ipfs
 
 import (
-	"bytes"
-	"context"
-	dagpoolcli "github.com/filedag-project/filedag-storage/dag/pool/client"
-	"github.com/ipfs/boxo/coreiface/options"
-	"github.com/ipfs/boxo/coreiface/path"
-	blocks "github.com/ipfs/go-block-format"
-	"github.com/ipfs/go-cid"
-	format "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/boxo/exchange/offline"
+	"github.com/ipfs/go-blockservice"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/kubo/client/rpc"
-	"github.com/multiformats/go-multicodec"
-	"golang.org/x/xerrors"
-	"strings"
 )
 
 var log = logging.Logger("ipfs-client")
-var _ dagpoolcli.PoolClient = (*PoolClient)(nil)
 
 type PoolClient struct {
 	api       *rpc.HttpApi
 	addr      string
 	enablePin bool
+}
+
+func NewBlockService(blkstore blockstore.Blockstore) blockservice.BlockService {
+	return blockservice.NewWriteThrough(blkstore, offline.Exchange(blkstore))
 }
 
 // NewPoolClient new a dagPoolClient
@@ -34,68 +28,10 @@ func NewPoolClient(api *rpc.HttpApi, enablePin bool) (*PoolClient, error) {
 		enablePin: enablePin,
 	}, nil
 }
-func (i *PoolClient) Close(ctx context.Context) {
-	return
+func (i *PoolClient) Close() {}
+func (i *PoolClient) Block() *BlockAPI {
+	return (*BlockAPI)(i)
 }
-func (i *PoolClient) DeleteBlock(ctx context.Context, cid cid.Cid) error {
-	return nil
-}
-
-func (i *PoolClient) Has(ctx context.Context, cid cid.Cid) (bool, error) {
-	_, err := i.GetSize(ctx, cid)
-	if err != nil {
-		if xerrors.Is(err, format.ErrNotFound{Cid: cid}) {
-			return false, nil
-		}
-		return false, err
-	}
-
-	return true, nil
-}
-
-func (i *PoolClient) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
-	log.Debugf(cid.String())
-	node, err := i.api.Dag().Get(ctx, cid)
-	if err != nil {
-		if strings.Contains(err.Error(), "not found") {
-			return nil, format.ErrNotFound{Cid: cid}
-		}
-		return nil, err
-	}
-	return node, nil
-}
-
-func (i *PoolClient) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
-	log.Debugf(cid.String())
-	stat, err := i.api.Block().Stat(ctx, path.IpfsPath(cid))
-	return stat.Size(), err
-}
-
-func (i *PoolClient) Put(ctx context.Context, block blocks.Block) error {
-	cidBuilder, _ := merkledag.PrefixForCidVersion(0)
-	cidCodec := multicodec.Code(cidBuilder.Codec).String()
-	_, err := i.api.Block().Put(ctx, bytes.NewReader(block.RawData()),
-		options.Block.Hash(cidBuilder.MhType, cidBuilder.MhLength),
-		options.Block.CidCodec(cidCodec),
-		options.Block.Format("v0"))
-	return err
-}
-
-func (i *PoolClient) PutMany(ctx context.Context, blocks []blocks.Block) error {
-	for _, block := range blocks {
-		if err := i.Put(ctx, block); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (i *PoolClient) AllKeysChan(ctx context.Context) (<-chan cid.Cid, error) {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (i *PoolClient) HashOnRead(enabled bool) {
-	//TODO implement me
-	panic("implement me")
+func (i *PoolClient) Store() *Store {
+	return (*Store)(i)
 }

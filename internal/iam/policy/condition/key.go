@@ -118,9 +118,10 @@ func (set KeySet) Merge(mset KeySet) {
 
 // Difference - returns a key set contains difference of two keys.
 // Example:
-//     keySet1 := ["one", "two", "three"]
-//     keySet2 := ["two", "four", "three"]
-//     keySet1.Difference(keySet2) == ["one"]
+//
+//	keySet1 := ["one", "two", "three"]
+//	keySet2 := ["two", "four", "three"]
+//	keySet1.Difference(keySet2) == ["one"]
 func (set KeySet) Difference(sset KeySet) KeySet {
 	nset := make(KeySet)
 

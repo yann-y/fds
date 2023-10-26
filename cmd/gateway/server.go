@@ -4,10 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	dagpoolcli "github.com/filedag-project/filedag-storage/dag/pool/client"
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
-	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/kubo/client/rpc"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
@@ -70,9 +68,8 @@ func startServer(cctx *cli.Context) {
 	if err != nil {
 		log.Fatalf("connect dagpool server err: %v", err)
 	}
-	defer poolClient.Close(context.TODO())
-	dagServ := merkledag.NewDAGService(dagpoolcli.NewBlockService(poolClient))
-	storageSys := store.NewStorageSys(cctx.Context, dagServ, kuboApi, db)
+	defer poolClient.Close()
+	storageSys := store.NewStorageSys(cctx.Context, poolClient, db)
 	authSys := iam.NewAuthSys(db, cred)
 	bmSys := store.NewBucketMetadataSys(db)
 	storageSys.SetNewBucketNSLock(bmSys.NewNSLock)

@@ -79,18 +79,22 @@ type GetUserPolicyResponse struct {
 }
 
 // ListUserPoliciesResponse
-//<ListUserPoliciesResponse xmlns="https://iam.amazonaws.com/doc/2010-05-08/">
+// <ListUserPoliciesResponse xmlns="https://iam.amazonaws.com/doc/2010-05-08/">
 // <ListUserPoliciesResult>
-//    <PolicyNames>
-//       <member>AllAccessPolicy</member>
-//       <member>KeyPolicy</member>
-//    </PolicyNames>
-//    <IsTruncated>false</IsTruncated>
+//
+//	<PolicyNames>
+//	   <member>AllAccessPolicy</member>
+//	   <member>KeyPolicy</member>
+//	</PolicyNames>
+//	<IsTruncated>false</IsTruncated>
+//
 // </ListUserPoliciesResult>
 // <ResponseMetadata>
-//    <RequestId>7a62c49f-347e-4fc4-9331-6e8eEXAMPLE</RequestId>
+//
+//	<RequestId>7a62c49f-347e-4fc4-9331-6e8eEXAMPLE</RequestId>
+//
 // </ResponseMetadata>
-//</ListUserPoliciesResponse>
+// </ListUserPoliciesResponse>
 type ListUserPoliciesResponse struct {
 	CommonResponse
 	XMLName                xml.Name `xml:"https://iam.amazonaws.com/doc/2010-05-08/ ListUserPoliciesResponse"`

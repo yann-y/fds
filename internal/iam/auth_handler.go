@@ -12,6 +12,7 @@ import (
 func SetAuthHandler(h http.Handler) http.Handler {
 	// handler for validating incoming authorization headers.
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		log.Infof("route %s", r.URL.Path)
 		aType := GetRequestAuthType(r)
 		if aType == AuthTypeSigned || aType == AuthTypeSignedV2 || aType == AuthTypeStreamingSigned {
 			// Verify if date headers are set, if not reject the request

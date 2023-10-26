@@ -14,7 +14,7 @@ import (
 
 var log = logging.Logger("leveldb")
 
-//ULevelDB level db store key-struct
+// ULevelDB level db store key-struct
 type ULevelDB struct {
 	DB *leveldb.DB
 }
@@ -34,7 +34,7 @@ func OpenDb(path string) (*ULevelDB, error) {
 	}, nil
 }
 
-//Close db close
+// Close db close
 func (l *ULevelDB) Close() error {
 	return l.DB.Close()
 }
@@ -83,7 +83,7 @@ func (e *entry) UnmarshalValue(value interface{}) error {
 	return msgpack.Unmarshal(e.Value, value)
 }
 
-//ReadAllChan read all key value
+// ReadAllChan read all key value
 func (l *ULevelDB) ReadAllChan(ctx context.Context, prefix string, seekKey string) (<-chan *entry, error) {
 	ch := make(chan *entry)
 	var slice *util.Range

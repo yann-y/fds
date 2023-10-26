@@ -8,16 +8,16 @@ import (
 )
 
 // CondFunction - condition function interface.
-//https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition_operators.html
-//String condition operators
-//Numeric condition operators
-//Date condition operators
-//Boolean condition operators
-//Binary condition operators
-//IP address condition operators
-//Amazon Resource Name (ARN) condition operators
-//...IfExists condition operators
-//Condition operator to check existence of condition keys
+// https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_policies_elements_condition_operators.html
+// String condition operators
+// Numeric condition operators
+// Date condition operators
+// Boolean condition operators
+// Binary condition operators
+// IP address condition operators
+// Amazon Resource Name (ARN) condition operators
+// ...IfExists condition operators
+// Condition operator to check existence of condition keys
 type CondFunction interface {
 	// evaluate() - evaluates this condition function with given values.
 	evaluate(values map[string][]string) bool

@@ -1275,7 +1275,7 @@ const (
 
 type stsErrorCodeMap map[STSErrorCode]STSError
 
-//ToSTSErr code to err
+// ToSTSErr code to err
 func (e stsErrorCodeMap) ToSTSErr(errCode STSErrorCode) STSError {
 	apiErr, ok := e[errCode]
 	if !ok {
