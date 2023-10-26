@@ -25,7 +25,7 @@ var startCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:        "pool-addr",
-			DefaultText: "localhost:5001",
+			DefaultText: "/ip4/192.168.2.30/tcp/5001",
 			Usage:       "set the ipfs http address you want connect",
 		},
 		&cli.StringFlag{

@@ -1,13 +1,19 @@
 package ipfs
 
 import (
+	"bytes"
 	"context"
 	dagpoolcli "github.com/filedag-project/filedag-storage/dag/pool/client"
+	"github.com/ipfs/boxo/coreiface/options"
+	"github.com/ipfs/boxo/coreiface/path"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
-	shell "github.com/ipfs/go-ipfs-api"
 	format "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
+	"github.com/ipfs/go-merkledag"
+	"github.com/ipfs/kubo/client/rpc"
+	ma "github.com/multiformats/go-multiaddr"
+	"github.com/multiformats/go-multicodec"
 	"golang.org/x/xerrors"
 	"strings"
 )
@@ -16,19 +22,19 @@ var log = logging.Logger("ipfs-client")
 var _ dagpoolcli.PoolClient = (*PoolClient)(nil)
 
 type PoolClient struct {
-	sh        *shell.Shell
+	sh        *rpc.HttpApi
 	addr      string
 	enablePin bool
 }
 
 // NewPoolClient new a dagPoolClient
 func NewPoolClient(addr string, enablePin bool) (*PoolClient, error) {
-	sh := shell.NewShell(addr)
+	sh, err := rpc.NewApi(ma.StringCast(addr))
 	return &PoolClient{
 		sh:        sh,
 		addr:      "",
 		enablePin: enablePin,
-	}, nil
+	}, err
 }
 func (i *PoolClient) Close(ctx context.Context) {
 	return
@@ -51,24 +57,29 @@ func (i *PoolClient) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 
 func (i *PoolClient) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
 	log.Debugf(cid.String())
-	get, err := i.sh.BlockGet(cid.String())
+	node, err := i.sh.Dag().Get(ctx, cid)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return nil, format.ErrNotFound{Cid: cid}
 		}
 		return nil, err
 	}
-	return blocks.NewBlock(get), nil
+	return node, nil
 }
 
 func (i *PoolClient) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 	log.Debugf(cid.String())
-	_, size, err := i.sh.BlockStat(cid.String())
-	return size, err
+	stat, err := i.sh.Block().Stat(ctx, path.IpfsPath(cid))
+	return stat.Size(), err
 }
 
 func (i *PoolClient) Put(ctx context.Context, block blocks.Block) error {
-	_, err := i.sh.BlockPut(block.RawData(), "v0", "sha2-256", -1)
+	cidBuilder, _ := merkledag.PrefixForCidVersion(0)
+	cidCodec := multicodec.Code(cidBuilder.Codec).String()
+	_, err := i.sh.Block().Put(ctx, bytes.NewReader(block.RawData()),
+		options.Block.Hash(cidBuilder.MhType, cidBuilder.MhLength),
+		options.Block.CidCodec(cidCodec),
+		options.Block.Format("v0"))
 	return err
 }
 

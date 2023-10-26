@@ -10,7 +10,7 @@ make build
 ## Run
 ```shell
 # --pool-addr 为ipfs 地址
-./fds daemon --pool-addr=192.168.2.50:5001
+./fds daemon --pool-addr=/ip4/192.168.2.30/tcp/5001
 ```
 
 
