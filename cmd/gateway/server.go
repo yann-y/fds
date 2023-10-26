@@ -8,6 +8,8 @@ import (
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
+	"github.com/ipfs/kubo/client/rpc"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/urfave/cli/v2"
 	dagpool "github.com/yann-y/fds/dag/pool/ipfs"
 	"github.com/yann-y/fds/internal/iam"
@@ -60,14 +62,17 @@ func startServer(cctx *cli.Context) {
 	}
 	defer db.Close()
 	router := mux.NewRouter()
-	//poolClient, err := dagpoolcli.NewPoolClient(poolAddr, poolUser, poolPassword, true)
-	poolClient, err := dagpool.NewPoolClient(poolAddr, true)
+	kuboApi, err := rpc.NewApi(ma.StringCast(poolAddr))
+	if err != nil {
+		log.Fatal(err)
+	}
+	poolClient, err := dagpool.NewPoolClient(kuboApi, true)
 	if err != nil {
 		log.Fatalf("connect dagpool server err: %v", err)
 	}
 	defer poolClient.Close(context.TODO())
 	dagServ := merkledag.NewDAGService(dagpoolcli.NewBlockService(poolClient))
-	storageSys := store.NewStorageSys(cctx.Context, dagServ, db)
+	storageSys := store.NewStorageSys(cctx.Context, dagServ, kuboApi, db)
 	authSys := iam.NewAuthSys(db, cred)
 	bmSys := store.NewBucketMetadataSys(db)
 	storageSys.SetNewBucketNSLock(bmSys.NewNSLock)

@@ -12,7 +12,6 @@ import (
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
 	"github.com/ipfs/kubo/client/rpc"
-	ma "github.com/multiformats/go-multiaddr"
 	"github.com/multiformats/go-multicodec"
 	"golang.org/x/xerrors"
 	"strings"
@@ -22,19 +21,18 @@ var log = logging.Logger("ipfs-client")
 var _ dagpoolcli.PoolClient = (*PoolClient)(nil)
 
 type PoolClient struct {
-	sh        *rpc.HttpApi
+	api       *rpc.HttpApi
 	addr      string
 	enablePin bool
 }
 
 // NewPoolClient new a dagPoolClient
-func NewPoolClient(addr string, enablePin bool) (*PoolClient, error) {
-	sh, err := rpc.NewApi(ma.StringCast(addr))
+func NewPoolClient(api *rpc.HttpApi, enablePin bool) (*PoolClient, error) {
 	return &PoolClient{
-		sh:        sh,
+		api:       api,
 		addr:      "",
 		enablePin: enablePin,
-	}, err
+	}, nil
 }
 func (i *PoolClient) Close(ctx context.Context) {
 	return
@@ -57,7 +55,7 @@ func (i *PoolClient) Has(ctx context.Context, cid cid.Cid) (bool, error) {
 
 func (i *PoolClient) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
 	log.Debugf(cid.String())
-	node, err := i.sh.Dag().Get(ctx, cid)
+	node, err := i.api.Dag().Get(ctx, cid)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
 			return nil, format.ErrNotFound{Cid: cid}
@@ -69,14 +67,14 @@ func (i *PoolClient) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error)
 
 func (i *PoolClient) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 	log.Debugf(cid.String())
-	stat, err := i.sh.Block().Stat(ctx, path.IpfsPath(cid))
+	stat, err := i.api.Block().Stat(ctx, path.IpfsPath(cid))
 	return stat.Size(), err
 }
 
 func (i *PoolClient) Put(ctx context.Context, block blocks.Block) error {
 	cidBuilder, _ := merkledag.PrefixForCidVersion(0)
 	cidCodec := multicodec.Code(cidBuilder.Codec).String()
-	_, err := i.sh.Block().Put(ctx, bytes.NewReader(block.RawData()),
+	_, err := i.api.Block().Put(ctx, bytes.NewReader(block.RawData()),
 		options.Block.Hash(cidBuilder.MhType, cidBuilder.MhLength),
 		options.Block.CidCodec(cidCodec),
 		options.Block.Format("v0"))

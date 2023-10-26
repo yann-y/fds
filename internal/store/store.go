@@ -8,17 +8,17 @@ import (
 	"github.com/dustin/go-humanize"
 	dagpoolcli "github.com/filedag-project/filedag-storage/dag/pool/client"
 	"github.com/google/uuid"
+	iface "github.com/ipfs/boxo/coreiface"
+	"github.com/ipfs/boxo/coreiface/path"
+	"github.com/ipfs/boxo/files"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/go-merkledag"
-	ufsio "github.com/ipfs/go-unixfs/io"
-	"github.com/klauspost/readahead"
-	pool "github.com/libp2p/go-buffer-pool"
+	"github.com/ipfs/kubo/client/rpc"
 	"github.com/shirou/gopsutil/cpu"
 	"github.com/shirou/gopsutil/mem"
 	"github.com/syndtr/goleveldb/leveldb"
-	"github.com/yann-y/fds/dag/pool/ipfs"
 	"github.com/yann-y/fds/internal/consts"
 	"github.com/yann-y/fds/internal/datatypes"
 	"github.com/yann-y/fds/internal/lock"
@@ -66,6 +66,7 @@ var ErrBucketNotEmpty = errors.New("bucket not empty")
 
 // StorageSys store sys
 type StorageSys struct {
+	Api             *rpc.HttpApi
 	Db              *uleveldb.ULevelDB
 	DagPool         ipld.DAGService
 	CidBuilder      cid.Builder
@@ -78,9 +79,10 @@ type StorageSys struct {
 }
 
 // NewStorageSys new a storage sys
-func NewStorageSys(ctx context.Context, dagService ipld.DAGService, db *uleveldb.ULevelDB) *StorageSys {
+func NewStorageSys(ctx context.Context, dagService ipld.DAGService, api *rpc.HttpApi, db *uleveldb.ULevelDB) *StorageSys {
 	cidBuilder, _ := merkledag.PrefixForCidVersion(0)
 	s := &StorageSys{
+		Api:        api,
 		Db:         db,
 		DagPool:    dagService,
 		CidBuilder: cidBuilder,
@@ -120,29 +122,9 @@ func (s *StorageSys) SetHasBucket(hasBucket func(ctx context.Context, bucket str
 }
 
 func (s *StorageSys) store(ctx context.Context, reader io.ReadCloser, size int64) (cid.Cid, error) {
-	data := io.Reader(reader)
-	if size > bigFileThreshold {
-		// We use 2 buffers, so we always have a full buffer of input.
-		bufA := pool.Get(chunkSize)
-		bufB := pool.Get(chunkSize)
-		defer pool.Put(bufA)
-		defer pool.Put(bufB)
-		ra, err := readahead.NewReaderBuffer(data, [][]byte{bufA[:chunkSize], bufB[:chunkSize]})
-		if err == nil {
-			data = ra
-			defer ra.Close()
-		} else {
-			log.Infof("readahead.NewReaderBuffer failed, error: %v", err)
-		}
-	}
-	node, err := ipfs.BalanceNode(data, s.DagPool, s.CidBuilder)
+	node, err := s.Api.Unixfs().Add(ctx, files.NewReaderFile(reader))
 	if err != nil {
 		return cid.Undef, err
-	}
-	select {
-	case <-ctx.Done():
-		return cid.Undef, ctx.Err()
-	default:
 	}
 	return node.Cid(), nil
 }
@@ -304,15 +286,20 @@ func (s *StorageSys) GetObject(ctx context.Context, bucket, object string) (Obje
 	if err != nil {
 		return ObjectInfo{}, nil, err
 	}
-	dagNode, err := s.DagPool.Get(ctx, meatCid)
+	f, err := s.Api.Unixfs().Get(ctx, path.IpfsPath(meatCid))
 	if err != nil {
 		return ObjectInfo{}, nil, err
 	}
-	reader, err := ufsio.NewDagReader(ctx, dagNode, s.DagPool)
-	if err != nil {
-		return ObjectInfo{}, nil, err
+	var file files.File
+	switch f := f.(type) {
+	case files.File:
+		file = f
+	case files.Directory:
+		return meta, nil, iface.ErrIsDir
+	default:
+		return meta, nil, iface.ErrNotSupported
 	}
-	return meta, reader, nil
+	return meta, file, nil
 }
 
 func (s *StorageSys) getObjectInfo(ctx context.Context, bucket, object string) (meta ObjectInfo, err error) {
