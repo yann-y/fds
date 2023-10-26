@@ -53,5 +53,7 @@ host_base = 192.168.2.26:9000
 host_bucket = bucket-name
 use_https = false
 ```
+# speed
+![part.png](docs/images/part.png)
 # Contributing
 PRs are welcome!
