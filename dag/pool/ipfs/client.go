@@ -1,6 +1,7 @@
 package ipfs
 
 import (
+	"context"
 	"github.com/ipfs/boxo/exchange/offline"
 	"github.com/ipfs/go-blockservice"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -22,11 +23,13 @@ func NewBlockService(blkstore blockstore.Blockstore) blockservice.BlockService {
 
 // NewPoolClient new a dagPoolClient
 func NewPoolClient(api *rpc.HttpApi, enablePin bool) (*PoolClient, error) {
-	return &PoolClient{
+	pool := &PoolClient{
 		api:       api,
 		addr:      "",
 		enablePin: enablePin,
-	}, nil
+	}
+	_, err := pool.api.Swarm().ListenAddrs(context.Background())
+	return pool, err
 }
 func (i *PoolClient) Close() {}
 func (i *PoolClient) Block() *BlockAPI {
@@ -34,4 +37,11 @@ func (i *PoolClient) Block() *BlockAPI {
 }
 func (i *PoolClient) Store() *Store {
 	return (*Store)(i)
+}
+func (i *PoolClient) Health(ctx context.Context) bool {
+	_, err := i.api.Swarm().ListenAddrs(ctx)
+	if err != nil {
+		log.Error("IPFS is not healthy %v", err)
+	}
+	return err == nil
 }
