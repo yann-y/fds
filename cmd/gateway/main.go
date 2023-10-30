@@ -2,10 +2,11 @@ package main
 
 import (
 	"fmt"
+	"os"
+
 	"github.com/urfave/cli/v2"
 	"github.com/yann-y/fds/internal/iam/auth"
 	"github.com/yann-y/fds/internal/utils"
-	"os"
 )
 
 var startCmd = &cli.Command{
@@ -25,8 +26,9 @@ var startCmd = &cli.Command{
 		},
 		&cli.StringFlag{
 			Name:        "pool-addr",
-			DefaultText: "/ip4/192.168.2.30/tcp/5001",
+			DefaultText: "/ip4/127.0.0.1/tcp/5001",
 			Usage:       "set the ipfs http address you want connect",
+			Value:       "/ip4/127.0.0.1/tcp/5001",
 		},
 		&cli.StringFlag{
 			Name:    "root-user",

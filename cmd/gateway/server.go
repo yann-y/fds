@@ -4,6 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"strings"
+	"syscall"
+
 	"github.com/gorilla/mux"
 	logging "github.com/ipfs/go-log/v2"
 	"github.com/ipfs/kubo/client/rpc"
@@ -17,11 +23,6 @@ import (
 	"github.com/yann-y/fds/internal/store"
 	"github.com/yann-y/fds/internal/uleveldb"
 	"github.com/yann-y/fds/internal/utils"
-	"net/http"
-	"os"
-	"os/signal"
-	"strings"
-	"syscall"
 )
 
 const (
