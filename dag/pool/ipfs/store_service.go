@@ -2,35 +2,33 @@ package ipfs
 
 import (
 	"context"
-	iface "github.com/ipfs/boxo/coreiface"
-	"github.com/ipfs/boxo/coreiface/path"
 	"github.com/ipfs/boxo/files"
+	"github.com/ipfs/boxo/path"
 	"github.com/ipfs/go-cid"
 	"io"
 )
 
 type Store PoolClient
 
-func (s *Store) Add(ctx context.Context, reader io.ReadCloser) (path.Resolved, error) {
+func (s *Store) Add(ctx context.Context, reader io.ReadCloser) (path.ImmutablePath, error) {
 	return s.api.Unixfs().Add(ctx, files.NewReaderFile(reader))
 }
-func (s *Store) Get(ctx context.Context, cidStr string) (io.ReadCloser, error) {
+func (s *Store) Get(ctx context.Context, cidStr string, offset, length int64) (io.ReadCloser, error) {
 	meatCid, err := cid.Decode(cidStr)
 	if err != nil {
 		return nil, err
 	}
-	f, err := s.api.Unixfs().Get(ctx, path.IpfsPath(meatCid))
+	//f, err := s.api.Unixfs().Get(ctx, path.IpfsPath(meatCid))
+	resp, err := s.api.Request("cat", meatCid.String()).
+		Option("offset", offset).
+		Option("length", length).
+		Send(ctx)
 	if err != nil {
 		return nil, err
 	}
-	var file files.File
-	switch f := f.(type) {
-	case files.File:
-		file = f
-	case files.Directory:
-		return nil, iface.ErrIsDir
-	default:
-		return nil, iface.ErrNotSupported
+	if resp.Error != nil {
+		return nil, err
 	}
-	return file, nil
+	//defer resp.Output.Close()
+	return resp.Output, nil
 }

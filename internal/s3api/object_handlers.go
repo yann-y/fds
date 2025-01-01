@@ -3,6 +3,7 @@ package s3api
 import (
 	"bytes"
 	"encoding/base64"
+	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/yann-y/fds/internal/apierrors"
 	"github.com/yann-y/fds/internal/consts"
@@ -187,17 +188,48 @@ func (s3a *s3ApiServer) GetObjectHandler(w http.ResponseWriter, r *http.Request)
 		response.WriteErrorResponse(w, r, apierrors.ErrNoSuchBucket)
 		return
 	}
-
-	objInfo, reader, err := s3a.store.GetObject(ctx, bucket, object)
+	objInfo, err := s3a.store.GetObjectInfo(ctx, bucket, object)
+	if err != nil {
+		response.WriteErrorResponseHeadersOnly(w, r, apierrors.ToApiError(ctx, err))
+		return
+	}
+	// 获取Range
+	var start, end int64
+	if r := r.Header.Get("Range"); r != "" {
+		if strings.Contains(r, "bytes=") && strings.Contains(r, "-") {
+			fmt.Sscanf(r, "bytes=%d-%d", &start, &end)
+			if end == 0 {
+				end = objInfo.Size - 1
+			}
+			if start > end || start < 0 || end < 0 || end >= objInfo.Size {
+				w.WriteHeader(http.StatusRequestedRangeNotSatisfiable)
+				log.Errorf("get Range start:%d,end %d,size %d", start, end, objInfo.Size)
+				return
+			}
+			w.Header().Add("Content-Length", strconv.FormatInt(end-start+1, 10))
+			w.Header().Add("Content-Range", fmt.Sprintf("bytes %v-%v/%v", start, end, objInfo.Size))
+			w.WriteHeader(http.StatusPartialContent)
+		} else {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+	} else {
+		w.Header().Add("Content-Length", strconv.FormatInt(objInfo.Size, 10))
+		start = 0
+		end = objInfo.Size - 1
+	}
+	//
+	objInfo, reader, err := s3a.store.GetObject(ctx, bucket, object, start, end-start+1)
 	if err != nil {
 		log.Errorf("GetObjectHandler GetObject err:%v", err)
 		response.WriteErrorResponse(w, r, apierrors.ToApiError(ctx, err))
 		return
 	}
 	//w.Header().Set(consts.AmzServerSideEncryption, consts.AmzEncryptionAES)
+	defer reader.Close()
 
 	response.SetObjectHeaders(w, r, objInfo)
-	w.Header().Set(consts.ContentLength, strconv.FormatInt(objInfo.Size, 10))
+	//w.Header().Set(consts.ContentLength, strconv.FormatInt(objInfo.Size, 10))
 	response.SetHeadGetRespHeaders(w, r.Form)
 	_, err = io.Copy(w, reader)
 	if err != nil {
@@ -240,7 +272,7 @@ func (s3a *s3ApiServer) HeadObjectHandler(w http.ResponseWriter, r *http.Request
 		return
 	}
 	//w.Header().Set(consts.AmzServerSideEncryption, consts.AmzEncryptionAES)
-
+	log.Infof("object info %v", objInfo)
 	// Set standard object headers.
 	response.SetObjectHeaders(w, r, objInfo)
 	// Set any additional requested response headers.

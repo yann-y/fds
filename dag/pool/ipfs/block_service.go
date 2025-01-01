@@ -3,12 +3,12 @@ package ipfs
 import (
 	"bytes"
 	"context"
-	"github.com/ipfs/boxo/coreiface/options"
-	"github.com/ipfs/boxo/coreiface/path"
 	"github.com/ipfs/boxo/ipld/merkledag"
+	"github.com/ipfs/boxo/path"
 	blocks "github.com/ipfs/go-block-format"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
+	"github.com/ipfs/kubo/core/coreiface/options"
 	"github.com/multiformats/go-multicodec"
 	"golang.org/x/xerrors"
 	"strings"
@@ -49,7 +49,7 @@ func (b *BlockAPI) Get(ctx context.Context, cid cid.Cid) (blocks.Block, error) {
 
 func (b *BlockAPI) GetSize(ctx context.Context, cid cid.Cid) (int, error) {
 	log.Debugf(cid.String())
-	stat, err := b.api.Block().Stat(ctx, path.IpfsPath(cid))
+	stat, err := b.api.Block().Stat(ctx, path.FromCid(cid))
 	return stat.Size(), err
 }
 

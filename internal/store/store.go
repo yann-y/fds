@@ -123,7 +123,7 @@ func (s *StorageSys) store(ctx context.Context, reader io.ReadCloser, size int64
 	if err != nil {
 		return cid.Undef, err
 	}
-	return node.Cid(), nil
+	return node.RootCid(), nil
 }
 
 func (s *StorageSys) checkAndDeleteObjectData(ctx context.Context, bucket, object string) {
@@ -266,7 +266,7 @@ func (s *StorageSys) PutObjectInfo(ctx context.Context, objInfo ObjectInfo) erro
 }
 
 // GetObject Get object
-func (s *StorageSys) GetObject(ctx context.Context, bucket, object string) (ObjectInfo, io.ReadCloser, error) {
+func (s *StorageSys) GetObject(ctx context.Context, bucket, object string, offset, length int64) (ObjectInfo, io.ReadCloser, error) {
 	lk := s.NewNSLock(bucket, object)
 	lkctx, err := lk.GetRLock(ctx, globalOperationTimeout)
 	if err != nil {
@@ -279,7 +279,10 @@ func (s *StorageSys) GetObject(ctx context.Context, bucket, object string) (Obje
 	if err != nil {
 		return ObjectInfo{}, nil, err
 	}
-	file, err := s.Pool.Store().Get(ctx, meta.Cid)
+	if length <= 0 {
+		length = meta.Size
+	}
+	file, err := s.Pool.Store().Get(ctx, meta.Cid, offset, length)
 	if err != nil {
 		return ObjectInfo{}, nil, err
 	}
